@@ -1,0 +1,73 @@
+<?php
+	// $Id$
+
+	/**
+	* @file
+	* Module for dynamic display of pithy philosophy quotes.
+	*/
+
+	/**
+	* Implementation of hook_block().
+	*/
+
+	function workshop_block($op = 'list', $delta = 0, $edit = array()) {
+		global $user;
+		$query = "select * from role";
+		switch ($op) {
+			case 'list':
+				$blocks[0]['info'] = t('workshop');
+				return $blocks;
+			case 'view':
+				$blocks['subject'] = t('Manage Workshops');
+				$content = "";
+			// $content .="<li><a href='".$GLOBALS['base_path']."workshops/academic_details'>Academic Centers</a></li>";
+			// $content .="<li><a href='".$GLOBALS['base_path']."workshops/resource_center_details'>Resource Centers</a></li>";
+
+			if(in_array('resource_person', array_values($user->roles)) && in_array('organiser', array_values($user->roles))) {
+				$content .= "<li><a href='".$GLOBALS['base_path']."workshops/college'>College, School Details</a></li>";
+				$content .= "<li><a href='".$GLOBALS['base_path']."workshops/members/list_organisers'>Organiser, Invigilator Details</a></li>";
+				$content .= "<li><a href='".$GLOBALS['base_path']."workshops/pending'>New Organiser, Invigilator Requests</a></li>";
+				$content .="<li><a href='".$GLOBALS['base_path']."workshops/workshop_request'>Request for workshop</a></li>";
+				$content .="<li><a href='".$GLOBALS['base_path']."workshops/list_workshop_request'>New Workshop Requests</a></li>";
+				$content .="<li><a href='".$GLOBALS['base_path']."workshops/list_workshop_approval'>Approved Workshops</a></li>";
+				$content .="<li><a href='".$GLOBALS['base_path']."workshops/workshop_detail'>Workshop Details</a></li>";
+				$content .="<li><a href='".$GLOBALS['base_path']."workshops/list_workshop_completed'>Completed Workshops</a></li>";
+				$content .="<li><a href='".$GLOBALS['base_path']."workshops/add_resource_person'>Add New Resource Person</a></li>";
+			}elseif(in_array('resource_person', array_values($user->roles))) {
+				$content .= "<li><a href='".$GLOBALS['base_path']."workshops/college'>College, School Details</a></li>";
+				$content .= "<li><a href='".$GLOBALS['base_path']."workshops/members/list_organisers'>Organiser, Invigilator Details</a></li>";
+				$content .= "<li><a href='".$GLOBALS['base_path']."workshops/pending'>New Organiser, Invigilator Requests</a></li>";
+				$content .="<li><a href='".$GLOBALS['base_path']."workshops/list_workshop_request'>New Workshop Requests</a></li>";
+				$content .="<li><a href='".$GLOBALS['base_path']."workshops/list_workshop_approval'>Approved Workshops</a></li>";
+				$content .="<li><a href='".$GLOBALS['base_path']."workshops/list_workshop_completed'>Completed Workshops</a></li>";
+				$content .="<li><a href='".$GLOBALS['base_path']."workshops/add_resource_person'>Add New Resource Person</a></li>";
+			}elseif(in_array('organiser', array_values($user->roles))) {
+				$content .="<li><a href='".$GLOBALS['base_path']."workshops/workshop_request'>Request for workshop</a></li>";
+				$content .="<li><a href='".$GLOBALS['base_path']."workshops/list_workshop_request'>Pending Workshop Requests</a></li>";
+				$content .="<li><a href='".$GLOBALS['base_path']."workshops/list_workshop_approval'>Approved Workshops</a></li>";
+                $content .="<li><a href='".$GLOBALS['base_path']."attendance-register/'>Participants Attendance Register</a></li>";
+				//$content .="<li><a href='".$GLOBALS['base_path']."workshops/workshop_detail'>Workshop Details</a></li>";
+				$content .="<li><a href='".$GLOBALS['base_path']."workshops/list_workshop_completed'>Completed Workshops</a></li>";
+			}
+			
+			if(in_array('admin_user', array_values($user->roles))) {
+			     	$content .="<li><a href='".$GLOBALS['base_path']."workshops/aworkshop_request'>Live workshop request</a></li>";
+				$content .="<li><a href='".$GLOBALS['base_path']."workshops/list_live_workshop_completed'>List Of Live Completed Workshops</a></li>";
+			}
+			if(in_array('authenticated user', array_values($user->roles)) && !in_array('organiser', array_values($user->roles)) && !in_array('resource_person', array_values($user->roles))) {
+                                $content .="<li><a href='".$GLOBALS['base_path']."workshops/add_organiser'>Add me as Organiser</a></li>";
+                        }
+                        if(in_array('authenticated user', array_values($user->roles)) && !in_array('invigilator', array_values($user->roles)) && !in_array('organiser', array_values($user->roles)) && !in_array('resource_person', array_values($user->roles))) {
+                                $content .="<li><a href='".$GLOBALS['base_path']."workshops/add_invigilator'>Add me as Invigilator</a></li>";
+                        }
+
+			if($content != "") {
+				$content = "<ul>".$content."</ul>";
+			}
+			
+			$blocks['content'] = $content;
+
+			return $blocks;
+
+		}
+	}

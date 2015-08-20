@@ -1,0 +1,6 @@
+; $Id$
+name = "CD Content Creation"
+description = "Automatic CD Content Creation"
+package = Spoken-Tutorial
+core = 6.x
+php = 5.1

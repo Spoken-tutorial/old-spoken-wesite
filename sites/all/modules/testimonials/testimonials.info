@@ -1,0 +1,7 @@
+; $Id$
+name = "Testimonials"
+description = "This module is used to manage testimonials"
+package = Spoken-Tutorial
+core = 6.x
+php = 5.1
+version = "6.x-1.0.1"

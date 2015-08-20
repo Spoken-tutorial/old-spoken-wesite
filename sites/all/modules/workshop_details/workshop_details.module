@@ -1,0 +1,76 @@
+<?php
+
+	function workshop_details_perm()
+	{
+		return array('Workshop Details','Student Details','Download Learner Certificates', 'List Of Students');
+	}
+	
+	function workshop_details_menu()
+	{
+		$items = array();
+		$items['attendance-register'] = array(
+			'title' => 'Participants Attendance Register',
+			'description' => 'Participants Attendance Register',
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('attendance_form'),
+			'access arguments' => array('Workshop Details'),
+			'type' => MENU_NORMAL_ITEM,
+			'file' => 'attendance.inc',
+		);
+		$items['attendance-register/student_detail'] = array(
+			'title' => 'Student Details',
+			'description' => 'Student Details',
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('student_detail_form'),
+			'access arguments' => array('Student Details'),
+			'type' => MENU_NORMAL_ITEM,
+			'file' => 'attendance.inc',
+		);
+		$items['attendance-register/get_wkshop_code'] = array(
+			'page callback' =>'get_wkshop_code',
+			'access callback' => TRUE,
+		);
+		$items['attendance-register/download'] = array(
+        	        'title' => 'Download Certificate',
+                	'page callback' => 'download',
+	                'access arguments' => array('Download Learner Certificates'),
+	                'type' => MENU_NORMAL_ITEM,
+	                'file' => 'download.inc',
+	        );
+		$items['attendance-register/list'] = array(
+                	'title' => 'List of students',
+                	'page callback' => 'list_of_students',
+                	'access arguments' => array('List Of Students'),
+                	'type' => MENU_NORMAL_ITEM,
+                	'file' => 'attendance.inc',
+        	);
+
+		return $items;
+	}
+	function get_wkshop_code()
+	{
+		global $user;
+		if(isset($_POST['wkshpcode'])){
+			$query = "select wd.no_of_participants, ac.institution_name, wr.foss_category, o.organiser_name from workshop_requests wr, organiser o, academic_center ac, workshop_details wd where wr.workshop_code = '".$_POST['wkshpcode']."' and wr.organiser_id = o.organiser_id and wr.academic_code = ac.academic_code and wd.workshop_code = '".$_POST['wkshpcode']."'";
+			db_set_active('workshop_info');
+			
+			$result = db_query($query);
+			$num_rows = db_affected_rows($result);
+
+			if($num_rows) {
+				$output = array();
+				$row = db_fetch_object($result);
+				$output[] = $row;
+			} else {
+				$query = "select ac.institution_name, wr.foss_category, o.organiser_name from workshop_requests wr, organiser o, academic_center ac where wr.workshop_code = '".$_POST['wkshpcode']."' and wr.organiser_id = o.organiser_id and wr.academic_code = ac.academic_code";
+                db_set_active('workshop_info');
+                $result = db_query($query);
+			    $output = array();
+                $row = db_fetch_object($result);
+                $output[] = $row;
+			}
+			echo json_encode($output);
+			exit;
+		}
+	}
+?>

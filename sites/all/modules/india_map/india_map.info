@@ -1,0 +1,7 @@
+; $Id$
+name = "India Map"
+description = "Shows workshop statistics for each state"
+package = Spoken-Tutorial
+core = 6.x
+php = 5.1
+version = "6.x-3.0"

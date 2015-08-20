@@ -1,0 +1,78 @@
+<?php
+	// $Id$
+
+	/**
+	* @file
+	* Module for dynamic display of pithy philosophy quotes.
+	*/
+
+	/**
+	* Implementation of hook_block().
+	*/
+
+	function stblock_block($op = 'list', $delta = 0, $edit = array()) {
+		global $user;
+		switch ($op) {
+			case 'list':
+				$blocks[0]['info'] = t('Stupload Block');
+				return $blocks;
+			case 'view':
+				$blocks['subject'] = t('Upload Interface');
+				$content = "<ul>";
+					if(user_access('administer stupload')){
+						//$content .="<li><a href='".$GLOBALS['base_url']."/stupload/update_tutorial_search'>Update Existing Tutorial</a></li>";
+					}
+					if(user_access('stupload english tutorial upload')){
+						$content .="<li><a href='".$GLOBALS['base_url']."/stupload/upload_english_tutorial'>Upload English Tutorial</a></li>";
+					}
+					if(user_access('stupload english tutorial update')){
+						$content .="<li><a href='".$GLOBALS['base_url']."/stupload/update_english_tutorial'>Update English Tutorial</a></li>";
+					}
+					if(user_access('stupload regional language tutorial upload')){
+						$content .="<li><a href='".$GLOBALS['base_url']."/stupload/upload_regional_language_tutorial'>Upload Regional Language Tutorial</a></li>";
+					}
+					if(user_access('stupload regional language tutorial update')){
+						$content .="<li><a href='".$GLOBALS['base_url']."/stupload/update_regional_language_tutorial'>Update Regional Language Tutorial</a></li>";
+					}
+					if(user_access('stupload add foss and tutorial')){
+						$content .="<li><a href='".$GLOBALS['base_url']."/stupload/add_foss'>Add FOSS</a></li>";
+						$content .="<li><a href='".$GLOBALS['base_url']."/stupload/add_tutorial'>Add Tutorial Name</a></li>";
+					}
+					if(user_access('domain review tutorial')){
+						$content .="<li><a href='".$GLOBALS['base_url']."/stupload/domain_review_tutorials'>Domain review tutorial</a></li>";
+					}
+					if(user_access('admin review tutorial')){
+						$content .="<li><a href='".$GLOBALS['base_url']."/stupload/admin_review_tutorials'>Admin review tutorial</a></li>";
+					}
+					if(user_access('quality review tutorial')){
+						$content .="<li><a href='".$GLOBALS['base_url']."/stupload/quality_review_tutorials'>Quality review tutorial</a></li>";
+						$content .="<li><a href='".$GLOBALS['base_url']."/stupload/public_review_list'>Public reviewed tutorials</a></li>";
+       						$content .="<li><a href='".$GLOBALS['base_url']."/stupload/exception_tutorials'>Exception tutorials</a></li>";
+					}
+					if(user_access('reviewer role assign')){
+						$content .="<li><a href='".$GLOBALS['base_url']."/stupload/domain_lang_role'>Domain Language Role</a></li>";
+						$content .="<li><a href='".$GLOBALS['base_url']."/stupload/quality_lang_role'>Quality Language Role</a></li>";
+					}
+					if(user_access('view all tutorials list')){
+                                                $content .="<li><a href='".$GLOBALS['base_url']."/stupload/view_tutorials_list'>View All Tutorials</a></li>";
+                                        }
+					 if(user_access('contributor access')){
+						$content .="<li><a href='".$GLOBALS['base_url']."/stupload/instruction_sheets'>Upload Instruction Sheet</a></li>";
+						$content .="<li><a href='".$GLOBALS['base_url']."/stupload/need_improvement_list'>Need improvement list</a></li>";
+                                                $content .="<li><a href='".$GLOBALS['base_url']."/stupload/uploaded_tutorials_list'>Uploaded tutorials list</a></li>";
+						$content .="<li><a href='".$GLOBALS['base_url']."/stupload/upload_english_timed'>Update English-timed</a></li>";
+                                        }
+					if(user_access('review tutorial')){
+                                                $content .="<li><a href='".$GLOBALS['base_url']."/stupload/reviewed_list'>Tutorial reviewed list</a></li>";
+                                        }
+					if(user_access('list of missing component')) {
+						$content .="<li><a href='".$GLOBALS['base_url']."/tutorial/missing_list'>Missing Component Notifications</a></li>";
+					}
+					if(user_access('contributor access')){
+						$content .="<li><a href='".$GLOBALS['base_url']."/stupload/update_outline'>Update Accepted Outline</a></li>";
+					}	
+					
+				$blocks['content'] = $content."</ul>";
+				return $blocks;
+		}
+	}

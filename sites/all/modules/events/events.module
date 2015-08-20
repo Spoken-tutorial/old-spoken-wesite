@@ -1,0 +1,253 @@
+<?php
+	function events_perm() {
+		return array('events','events detail','wkshp detail','events foss');
+	}
+	function events_menu(){
+		$items = array();
+		$items['events'] = array(
+					'title' => 'Workshop Information',
+					'page callback' => 'events',
+					'access arguments' => array('events'),
+					'type' => MENU_NORMAL_ITEM,
+			);
+		$items['events/events_detail'] = array(
+					'title' => 'Workshop Detailed Information',
+					'page callback' => 'events_detail',
+					'access arguments' => array('events detail'),
+					'type' => MENU_NORMAL_ITEM,
+			);
+		$items['events/events_foss'] = array(
+					'title' => 'Workshop Detailed Information',
+ 					'page callback' => 'events_foss',
+					'access arguments' => array('events foss'),
+					'type' => MENU_NORMAL_ITEM,
+			);
+		$items['events/wkshp_detail'] = array(
+					'title' => 'Workshop Detailed Information2',
+					'page callback' => 'wkshp_detail',
+					'access arguments' => array('wkshp detail'),
+					'type' => MENU_NORMAL_ITEM,
+			);
+		$items['filter/get_state'] = array(
+					'page callback' => 'filter_get_state',
+					'access callback' => TRUE,
+		);
+		return $items;
+		}
+
+	function filter_get_state() {
+	//var_dump($_POST['state']);
+	if(isset($_POST['state'])){
+		$state = $_POST['state'];
+		$query = "select DISTINCT wr.foss_category from workshop_info.workshop_requests as wr where wr.academic_code LIKE '".$_POST['state']."%' and wr.status = 1 order by wr.foss_category";
+		$result = db_query($query);
+		$output = array();
+		$count = 0;
+		while($row = db_fetch_object($result)) {
+			$output[$count][0] = $row->foss_category;
+			$count++;
+		}
+		
+		echo json_encode($output);
+	}else {
+		echo json_encode("Access Denied!");
+	}
+	}
+
+	function events() {
+
+	$output .= drupal_get_form('events_form');
+
+	$output .= '<div id="calendar"></div>';
+
+	return $output;
+
+	}
+
+	function events_form($form_state){
+	
+	$path = drupal_get_path('module', 'events');
+	drupal_add_js($path.'/events.js');
+	
+
+	//$query = "select s.code,s.name from workshop_info.states as s,workshop_info.workshop_requests as wr where wr.academic_code LIKE %s.code% and wr.status = 2" ;
+	$query = "select s.code,s.name from workshop_info.states as s,workshop_info.workshop_requests as wr where wr.academic_code LIKE CONCAT('%', s.code, '%') and wr.status = 2 order by s.name";
+
+	$result = db_query($query);
+
+	$city = array();
+	$city['0'] = 'Select state';
+	$city[''] = 'All State';
+
+	while ($item = db_fetch_object($result)) {
+
+		$city[$item -> code] = human_text($item -> name);
+		$nos += (int)($item->nos);
+
+	}
+
+	
+
+	$form['state'] = array(
+
+		'#type' => 'select',
+
+		'#title' => t(''),
+
+		'#options' => $city,
+
+		'#default_value' => 'Select state',
+
+	);
+		
+	$form['foss_category'] = array(
+
+		'#type' => 'select',
+
+		'#title' => t(''),
+
+		'#options' => $foss_arr,
+
+	);
+
+	/*$form['tot_workshop'] = array(
+
+	'#title' => 'Total no.of workshops',
+
+	'#type' => 'textfield',
+
+	'#prefix' => '<div class="container-inline">',
+
+	'#suffix' => '</div>',
+
+	);*/
+
+	return $form;
+
+	}
+
+	function events_detail($eventdate)
+
+	{
+
+		$query = "select wr.foss_category,count(wr.foss_category) as count,wr.workshop_code,wr.organiser_id,wr.department,wr.academic_code,o.organiser_name,ac.institution_name,count(ac.institution_name) as count1,ac.city from workshop_info.workshop_requests as wr,workshop_info.organiser as o,workshop_info.academic_center as ac where ac.academic_code = wr.academic_code and wr.organiser_id = o.organiser_id and wr.cfm_wkshop_date = '$eventdate' and wr.status = 1 GROUP BY ac.institution_name,wr.foss_category ORDER BY count1 DESC";
+
+
+
+		$result = db_query($query);
+
+
+
+		while ($info_data = db_fetch_object($result))
+
+    	{
+
+			$info_rows[] = array($info_data->foss_category,$info_data->count1,$info_data->institution_name,ucfirst(strtolower($info_data->city))); 
+
+		}
+
+		$d = date_parse_from_format("Y-m-d", $eventdate);
+
+		$monthn = $d["month"];
+
+		$day = $d["day"];
+
+		$yeare = $d["year"];
+
+		$monthName = date("M", mktime(0, 0, 0, $monthn, 10));
+
+		echo "<div class='mainc'>";
+
+		echo "<div class='main-date'>";
+
+		echo "<div class='date'>
+
+				<div class='monthe'>".$monthName."</div>
+
+				<div class='daye'>".$day."
+
+					<div class='yeare'>".$yeare."</div>
+
+				</div>
+
+			</div>";
+
+		echo "<div class='etitle'><h2>Workshops Conducted</h2></div>";
+
+		echo "</div></div>";
+
+		
+
+		$info_header = array('FOSS','Workshop Nos','Institution','City');
+
+		$output = theme('table',$info_header, $info_rows);
+
+		return $output; //. theme('pager', $count);
+
+	}
+
+	
+
+	function events_foss($eventid,$eventdate,$foss_arr,$city,&$form,&$form_state,$form_id)
+
+	{
+
+		$result = db_query("select wr.foss_category,count(wr.foss_category) as count,wr.workshop_code,wr.organiser_id,wr.department,wr.academic_code,o.organiser_name,ac.institution_name,count(ac.institution_name) as count1,ac.city from workshop_info.workshop_requests as wr,workshop_info.organiser as o,workshop_info.academic_center as ac where ac.academic_code = wr.academic_code and wr.organiser_id = o.organiser_id and wr.id = '$eventid' and wr.status = 1 GROUP BY ac.institution_name,wr.foss_category ORDER BY count1 DESC");
+
+
+
+		$count_query = db_query("SELECT count(wr.id) as count FROM workshop_info.workshop_requests as wr,workshop_info.organiser as o,workshop_info.academic_center as ac where wr.organiser_id = o.organiser_id and wr.academic_code = ac.academic_code and wr.foss_category LIKE '%".$foss_arr."%' and ac.city LIKE '%".$city."%'");
+
+		$count = db_fetch_object($count_query);
+
+
+
+		while ($info_data = db_fetch_object($result))
+
+		{
+
+			$info_rows[] = array($info_data->foss_category,$info_data->count1,$info_data->institution_name,ucfirst(strtolower($info_data->city))); 
+
+		}
+
+		$d = date_parse_from_format("Y-m-d", $eventdate);
+
+		$monthn = $d["month"];
+
+		$day = $d["day"];
+
+		$yeare = $d["year"];
+
+		$monthName = date("M", mktime(0, 0, 0, $monthn, 10));
+
+		echo "<div class='mainc'>";
+
+		echo "<div class='main-date'>";
+
+		echo "<div class='date'>
+
+				<div class='monthe'>".$monthName."</div>
+
+				<div class='daye'>".$day."
+
+					<div class='yeare'>".$yeare."</div>
+
+				</div>
+
+
+
+			</div>";
+
+		echo "</div></div>";
+
+		
+
+		$info_header = array('FOSS','Workshop Nos','Institution','City');
+
+		$output = theme('table',$info_header, $info_rows);
+
+		return $output; //. theme('pager', $count);
+
+	}
+
+?>

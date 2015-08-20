@@ -1,0 +1,7 @@
+; $Id$
+name = "Workshops Feedback information"
+description = "This is to view workshop feedback"
+package = Spoken-Tutorial
+core = 6.x
+php = 5.1
+version = "6.x-1.0.1"

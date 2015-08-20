@@ -1,0 +1,114 @@
+<?php
+	function testimonials_perm() {
+		return array('new testimonial', 'pending testimonials', 'approved testimonials', 'admin testimonials');
+	}
+
+	function testimonials_menu(){
+
+		$items = array();
+
+		// testimonial admin settings form
+		$items['admin/settings/testimonials'] = array(
+			'title' => 'spoken-tutorial testimonial settings',
+			'description' => 'spoken-tutorial testimonial interface settings',
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('testimonial_settings_form'),
+			'access arguments' => array('admin testimonials'),
+			'type' => MENU_NORMAL_ITEM,
+			'file' => 'settings.inc',
+		);
+		$items['testimonial/add'] = array(
+			'title' => 'Add Testimonial',
+			'description' => 'form to upload new testimonial',
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('add_new_testimonial_form'),
+			'access arguments' => array('new testimonial'),
+			'type' => MENU_NORMAL_ITEM,
+			'file' => 'new_testimonial.inc',
+		);
+		$items['testimonial/list'] = array(
+			'title' => 'List of testimonials waiting for approval',
+			'page callback' => 'list_pending_testimonials',
+			'access arguments' => array('pending testimonials'),
+			'file' => 'pending_testimonials.inc',
+		);
+		$items['testimonial/modify'] = array(
+			'title' => 'Modify/Publish Testimonial',
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('modify_testimonial_form'),
+			'access arguments' => array('admin testimonials'),
+			'file' => 'pending_testimonials.inc',
+		);
+		$items['testimonial/edit'] = array(
+			'title' => 'Edit Testimonial',
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('edit_testimonial_form'),
+			'access arguments' => array('new testimonial'),
+			'file' => 'new_testimonial.inc',
+		);
+		$items['testimonial/delete'] = array(
+			'page callback' => 'delete_testimonial',
+			'access arguments' => array('new testimonial'),
+			'file' => 'new_testimonial.inc',
+		);
+		$items['testimonial/publish'] = array(
+			'page callback' => 'publish_testimonial',
+			'access arguments' => array('admin testimonials'),
+			'file' => 'pending_testimonials.inc',
+		);
+		$items['testimonial/reject'] = array(
+			'page callback' => 'reject_testimonial',
+			'access arguments' => array('admin testimonials'),
+			'file' => 'pending_testimonials.inc',
+		);
+		$items['testimonial/list/pending'] = array(
+			'title' => 'List of testimonials waiting for approval',
+			'page callback' => 'list_pending_testimonials',
+			'access arguments' => array('pending testimonials'),
+			'type' => MENU_DEFAULT_LOCAL_TASK,
+			'file' => 'pending_testimonials.inc',
+			'weight' => 1
+		);
+		$items['testimonial/list/approved'] = array(
+			'title' => 'List of approved testimonials',
+			'page callback' => 'list_approved_testimonials',
+			'access arguments' => array('approved testimonials'),
+			'type' => MENU_LOCAL_TASK,
+			'file' => 'approved_testimonials.inc',
+			'weight' => 2
+		);
+		$items['testimonial/list/uploaded'] = array(
+			'title' => 'List of uploaded testimonials',
+			'page callback' => 'list_uploaded_testimonials',
+			'access arguments' => array('new testimonials'),
+			'type' => MENU_NORMAL_ITEM,
+			'file' => 'new_testimonial.inc',
+		);
+		
+		return $items;
+	}
+	
+	function testimonials_get_user_info($id) {
+		global $base_path;
+		$output = '';
+		$query = "select name from users where uid = ".$id;
+		$result = db_query($query);
+		$row = db_fetch_object($result);
+		if($row) {
+			$output = l($row->name, 'user/'.$id);
+		}
+		return $output;
+	}
+	function testimonial_get_body($text) {
+		$tmp_text = explode("\n", $text);
+		$output = '';
+		foreach($tmp_text as $line) {
+			$line = trim($line);
+			if($line) {
+				$output .= '<p style="text-align: justify;">'.$line.'</p>';
+			}
+		}
+		
+		return $output;
+	}
+?>

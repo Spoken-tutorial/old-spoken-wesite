@@ -1,0 +1,621 @@
+<?php
+	function cd_content_perm() {
+		return array('cd_content_creator');
+	}
+
+	function cd_content_menu(){
+
+		$items = array();
+
+		$items['create_cd_content'] = array(
+			'title' => 'Automatic CD Content Creation',
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('create_cd_content_form'),
+			'access arguments' => array('cd_content_creator'),
+			'type' => MENU_NORMAL_ITEM,
+		);
+		$items['cd_get_lang'] = array(
+			'page callback' => 'cd_get_lang',
+			'access callback' => TRUE,
+			'type' => MENU_NORMAL_ITEM,
+		);
+	
+		return $items;
+	}
+	
+	function cd_get_lang(){
+		if(isset($_POST['foss'])){
+			/*$query = "select count(*) as nos,tr.language from tutorial_resources tr where tr.tutorial_detail_id in (select id from tutorial_details td where td.foss_category='".$_POST['foss']."')";*/
+			//$query = "select distinct tr.language from tutorial_resources tr where tr.tutorial_detail_id in (select id from tutorial_details td where td.foss_category='".$_POST['foss']."') order by tr.language";
+			$query = "select count(*) as nos, language from tutorial_resources where tutorial_detail_id in (select id from tutorial_details where foss_category='".$_POST['foss']."') and tutorial_status='accepted' group by language ASC";
+			$result = db_query($query);
+			$data = array();
+			$count=0;
+			while($row = db_fetch_object($result)){
+				//$data[] = $row;
+				$data[$count][0] = $row->language;
+				$data[$count++][1] = $row->nos;
+			}
+			echo json_encode($data);
+			exit;
+		}
+	}
+	
+	function create_cd_content_form($form_state) {
+		ini_set('max_execution_time', 240);		
+		require_once('path.config.inc');
+
+		$path = drupal_get_path('module', 'cd_content');
+		drupal_add_js($path . '/cd_content.js', 'module');
+		$query = "SELECT distinct foss_category FROM tutorial_details WHERE id IN (SELECT distinct tutorial_detail_id AS id FROM tutorial_resources WHERE tutorial_status='accepted') order by foss_category ASC";
+		$result = db_query($query);
+		$foss_arr = array();
+		$foss_arr[''] = '-- Select FOSS --';
+		while ($item = db_fetch_object($result)) {
+			$foss_arr[$item -> foss_category] = cd_human_text($item -> foss_category);
+		}
+  
+		$form['run'] = array(
+			'#type' => 'fieldset',
+			'#title' => t(''),
+			'#collapsible' => FALSE,
+			'#collapsed' => FALSE,
+			'#prefix' => '<div id="run-wrapper">',
+			'#suffix' => '</div>',
+			'#tree' => TRUE,
+		);
+		$form['run']['category'] = array(
+			'#type' => 'select',
+			'#title' => t('FOSS Category'),
+			'#options' => $foss_arr,
+			'#attributes' => array('class' => 'cd-foss-category'),
+			'#prefix' => '<table><tr><td>',
+		);
+		$form['run']['language'] = array(
+			'#type' => 'select',
+			'#title' => t('Language'),
+			'#multiple' => TRUE,
+			'#size' => '10',
+			'#options' => array(),
+			'#attributes' => array('class' => 'cd-language'),
+			'#prefix' => '<div class="cd_lang_div">',
+			'#suffix' => '<p>We can choose more than one language <br />by pressing <b>CTRL+Click</b>.</p></div>',
+			'#validated' => TRUE,
+		);
+		$form['run']['add'] = array(
+			'#type' => 'submit',
+			'#value' => t('Add'),
+			'#suffix' => '</td>',
+		);
+		
+		$fval = '';
+		if(isset($_GET['fval'])) {
+			$fval = $_GET['fval'];
+		}
+		
+		$lval = '';
+		if(isset($_GET['lval'])) {
+			$lval = $_GET['lval'];
+		}
+		$foss = unserialize($fval);
+		$lang = unserialize($lval);
+		$toc = '';
+		$file_size = 0;
+		if($foss != '') {
+			foreach($foss as $fs) {
+				$query = "select tutorial_name, tutorial_level from tutorial_details where foss_category='".$fs."'";
+				$result = db_query($query);
+				while($row = db_fetch_object($result)) {
+					foreach($lang[$fs] as $lg) {
+						$filepath = $file_upload_path.'st_videos/'.$fs.'/'.$row->tutorial_level.'/'.$row->tutorial_name.'/'.$row->tutorial_name.'-'.$lg.'.ogv';
+						if(file_exists($filepath)) {
+							$file_size += (filesize($filepath) / 1024);
+						}
+					}
+					$filepath = $file_upload_path.'st_videos/'.$fs.'/'.$row->tutorial_level.'/'.$row->tutorial_name.'/'.$row->tutorial_name.'-Slide-'.$lg.'.zip';
+					if(file_exists($filepath)) {
+						$file_size += (filesize($filepath) / 1024);
+					}
+					$filepath = $file_upload_path.'st_videos/'.$fs.'/'.$row->tutorial_level.'/'.$row->tutorial_name.'/'.$row->tutorial_name.'-Codefile-'.$lg.'.zip';
+					if(file_exists($filepath)) {
+						$file_size += (filesize($filepath) / 1024);
+					}
+					$filepath = $file_upload_path.'st_videos/'.$fs.'/'.$row->tutorial_level.'/'.$row->tutorial_name.'/'.$row->tutorial_name.'-Assignment-'.$lg.'.txt';
+					if(file_exists($filepath)) {
+						$file_size += (filesize($filepath) / 1024);
+					}
+				}
+			}
+			$file_size += 7168;
+			$toc = '<p style="text-align: right;">Zip File Size: <b>&#8776;</b>'._cd_format_kbytes($file_size).'</p><table border=1><caption style="text-align:left;"><b>Selected Items:</b></caption><tr><td align="center"><b>FOSS</b></td><td align="center"><b>Languages</b></td></tr>';
+			foreach($foss as $fs) {
+				$toc .= '<tr><td>'.cd_human_text($fs).'</td>';
+				$lng = '';
+				foreach($lang[$fs] as $lan) {
+					if($lng != ''){
+						$lng .= ', ';
+					}
+					$lng .= $lan;
+				}
+				$toc .= '<td>'.$lng.'</td></tr>';
+			}
+			$toc .= '</table>';
+		}
+		
+		$form['run']['videos_sel_details'] = array(
+			'#type' => 'item',
+			'#value' => $toc,
+			'#prefix' => '<td>',
+		);
+		
+		$form['run']['selfoss'] = array(
+			'#type' => 'hidden',
+			'#value' => $fval,
+		);
+		
+		$form['run']['sellang'] = array(
+			'#type' => 'hidden',
+			'#value' => $lval,
+		);
+		
+		$form['run']['file_upload_path'] = array(
+			'#type' => 'hidden',
+			'#value' => $file_upload_path,
+		);
+		
+		if($fval != '') {
+			$form['run']['submit'] = array(
+				'#type' => 'submit',
+				'#value' => t('Submit'),
+				'#suffix' => '</td></tr></table>',
+			);
+		}else {
+			$form['run']['submit'] = array(
+				'#type' => 'submit',
+				'#value' => t('Submit'),
+				'#prefix' => '<div style="display: none;">',
+				'#suffix' => '</div></td></tr></table>',
+			);
+		}
+      
+		return $form;
+	}
+	
+	function create_cd_content_form_validate($form, &$form_state) {
+		if($form_state["clicked_button"]["#value"] == "Submit") {
+			if($form_state['values']['run']['selfoss'] == '' || $form_state['values']['run']['sellang'] == '') {
+				form_set_error('videos_sel_details', t('Please select atlease one FOSS & one language'));
+			}
+			
+		}else {
+			if($form_state['values']['run']['category'] == '') {
+				form_set_error('category', t('Please select FOSS category'));
+			}
+			if(count($form_state['values']['run']['language']) == 0) {
+                                form_set_error('language', t('Please select Language category'));
+			}
+		}
+	}
+	
+	function create_cd_content_form_submit($form, &$form_state) {
+		require_once("ZipStream.php");	
+		ini_set('max_execution_time', 240);
+		$file_upload_path = $form_state['values']['run']['file_upload_path'];
+		
+		$fval = unserialize($form_state['values']['run']['selfoss']);
+		$tmp_arr = array();
+		foreach($fval as $fv) {
+			$tmp_arr[$fv] = $fv;
+		}
+		$fval = $tmp_arr;
+		
+		$lval = unserialize($form_state['values']['run']['sellang']);
+		if($form_state["clicked_button"]["#value"] == "Add") {
+			if($fval != '') {
+				$fval[$form_state['values']['run']['category']] = $form_state['values']['run']['category'];
+			}else {
+				$fval = array();
+				$fval[$form_state['values']['run']['category']] = $form_state['values']['run']['category'];
+			}
+			$selected_langs = array();
+			foreach($form_state['values']['run']['language'] as $sel_langs){
+					$selected_langs[] = $sel_langs;
+			}
+			if($lval != '') {
+				$lval[$form_state['values']['run']['category']] = $selected_langs;
+			}else {
+				$lval = array();
+				$lval[$form_state['values']['run']['category']] = $selected_langs;
+			}
+			sort($fval);
+			drupal_goto($path = 'create_cd_content', $query = array('fval' => serialize($fval), 'lval' => serialize($lval)));
+			exit;
+		}
+		// query to fetch html content of all stored pages
+		$query = "select name, header, footer from page_content";
+		$result = db_query($query);
+		$header = '';
+		$footer = '';
+		$show_video = '';
+		$notrequired = '';
+		$pending = '';
+		// multiple language
+		$zip_foss = '';
+		$options = '';
+		foreach($fval as $sel_foss){
+			if($zip_foss != '') {
+				$zip_foss .= '_';
+			}
+			$zip_foss .= $sel_foss;
+			$options .= '<option value="'.str_replace('+', 'p', $sel_foss).'">'.cd_human_text($sel_foss).'</option>';
+		}
+
+		// creating zip file
+		$zipFile = $zip_foss."-".time().'.zip';
+		$zip = new ZipStream($zipFile);
+		// $zip->setComment('test description');
+  		
+		while($row = db_fetch_object($result)) {
+			switch($row->name) {
+				case 'index.html':
+					$header = $row->header;
+					$footer = $row->footer;
+					break;
+				case 'show_video.html':
+					$show_video = $row->header;
+					break;
+				case 'notrequired':
+					// $notrequired = $row->header;
+					$zip->addFile($row->header, 'spoken-tutorial.org/theme/resource_not_required.html');
+					break;
+				case 'pending':
+					// $pending = $row->header;
+					$zip->addFile($row->header, 'spoken-tutorial.org/theme/resource_not_available.html');
+			}
+		}
+		$zip->addLargeFile($file_upload_path."spoken-tutorial.org/about.html", "spoken-tutorial.org/theme/about.html");
+		$zip->addLargeFile($file_upload_path."spoken-tutorial.org/contact.html", "spoken-tutorial.org/theme/contact.html");
+		// generating index.html data
+		$index_file_data = '		<div class="tutorial-list-search">
+										<div class="form-item" id="edit-foss-category-wrapper">
+											<select name="foss_category" class="form-select cd-sel-foss" id="edit-foss-category" >
+												<option value="" selected="selected">Select FOSS Category</option>
+												'.$options.'
+											</select>
+										</div>
+										<div class="form-item" id="edit-language-wrapper">
+											<select name="language" class="form-select cd-sel-language" id="edit-language" >
+												<option value="">Select Language</option>
+											</select>
+										</div>
+										<div id="locate_tutorial" class="form-item">
+											<input type="button" name="op" id="edit-save" value="Locate Tutorial"  class="form-submit locate_tutorial" />
+										</div>
+									</div>
+									<div class="list_data">
+										<div style="overflow:hidden;margin-right:50px;" class="instruction-sheet"></div>
+										<input type="hidden" name="inst_sheet" class="inst_sheet">
+										<table class="sticky-enabled">
+											<thead>
+												<tr>
+													<th>FOSS</th>
+													<th>Level</th>
+													<th>Language</th>
+													<th>Tutorial Name</th>
+													<th></th>
+												</tr>
+											</thead>
+											<tbody>';
+		
+		$sno = 1;
+		$zipFileNew = '';
+  		foreach($fval as $sel_foss) {
+  			$selected_langs = '';
+  			foreach($lval[$sel_foss] as $sel_lang) {
+  				if($selected_langs != '') {
+  					$selected_langs .= " OR ";
+  				}
+  				$selected_langs .= "tr.language='".$sel_lang."'";
+  			}
+  			$selected_langs = "(".$selected_langs.")";
+  			// query to fetch all videos and their components
+			$query = "select tr.hit_count, tr.id as trid, tr.language, tr.upload_time, tr.reviewer, tr.tutorial_outline, tr.tutorial_script, tr.tutorial_script_timed, tr.tutorial_video, tr.tutorial_status, tc.tutorial_slide, tc.id as tcid, tc.tutorial_code, tc.tutorial_assignment, td.id as tdid, td.foss_category, td.tutorial_name, td.tutorial_level, td.order_code from tutorial_resources tr, tutorial_common_contents tc, tutorial_details td where (tr.tutorial_status='accepted' || tr.tutorial_status='public_review') and tr.tutorial_detail_id=td.id and ".$selected_langs." and td.foss_category='".$sel_foss."' and tc.id=tr.tutorial_content_id ORDER BY td.tutorial_level, td.order_code, tr.language ASC";
+			$result = db_query($query);
+			while($row = db_fetch_object($result)) {
+				$show_video_file = str_replace($row->tutorial_name.'-'.$row->language.'.ogv', '', $row->tutorial_video).'show_video_'.$row->language.'.html';
+			
+				// generating list of videos for index.html
+				$index_file_data .= '				<tr class="odd languages '.str_replace('+', 'p', $row->foss_category).'-'.$row->language.'">
+														<td>'.cd_human_text($row->foss_category).'</td>
+														<td>'.$row->tutorial_level.'</td>
+														<td>'.$row->language.'</td>
+														<td><a href="'.$show_video_file.'" title="'.cd_human_text($row->tutorial_name).'">'.cd_human_text($row->tutorial_name).'</a></td>
+														<td>
+															<a href="'.$show_video_file.'" title="View">
+																<img class="list" src="theme/images/thumb.png">
+															</a>
+														</td>
+													</tr>';
+			
+				// fetching video meta data
+				$movie = new ffmpeg_movie($file_upload_path.$row->tutorial_video);
+				$time = gmdate("H:i:s", $movie->getDuration());
+				$size = filesize($file_upload_path.$row->tutorial_video);
+			
+				// generating show_video page
+				$tmp_show_video = str_replace('{foss}', cd_human_text($row->foss_category), $show_video);
+				$tmp_show_video = str_replace('{level}', $row->tutorial_level, $tmp_show_video);
+				$tmp_show_video = str_replace('{language}', $row->language, $tmp_show_video);
+				$tmp_show_video = str_replace('{published}', $row->upload_time, $tmp_show_video);
+				$tmp_show_video = str_replace('{duration}', $time, $tmp_show_video);
+				//$tmp_show_video = str_replace('{file-size}', _cd_format_bytes($size), $tmp_show_video);
+				$tmp_show_video = str_replace('{outline}', cd_outline_humen_view($row->tutorial_outline), $tmp_show_video);
+				$tmp_show_video = str_replace('{pre-requisites}', cd_get_req_pre($row, 1, 1), $tmp_show_video);
+				$tmp_show_video = str_replace('{title}', cd_human_text($row->tutorial_name), $tmp_show_video);
+			
+				// adding video url to video.js player
+				$output = '<video id="example_video_1" class="video-js vjs-default-skin" controls width="100%" height="400" data-setup="{}">
+							<source src="'.$row->tutorial_name.'-'.$row->language.'.ogv" type="video/ogg" />';
+			
+				/*
+				// generating video subtitle
+				if($row -> language != 'English'){
+					$srt_file = 'st_videos/'.$row->foss_category.'/'.$row->tutorial_level.'/'.$row->tutorial_name.'/'.$row->tutorial_name.'-English.srt';
+					if(file_exists($file_upload_path.$srt_file)){
+						$output .= '<track kind="captions" src="'.$row->tutorial_name.'-English.srt" srclang="en" label="English" />';
+						$zip->addFile($file_upload_path.$srt_file, 'spoken-tutorial.org/'.$srt_file);
+					}
+				}
+				$srt_file = str_replace('.ogv', '.srt', $value->tutorial_video);
+				if(file_exists($file_upload_path.$srt_file)){
+					$output .= '<track kind="captions" src="'.$row->tutorial_name.'-'.$row->language.'.srt" srclang="en" label="'.$value -> language.'" />';
+					$zip->addFile($file_upload_path.$srt_file, 'spoken-tutorial.org/'.$srt_file);
+				}*/
+			
+				$output .= '</video>
+							<input type="hidden" name="foss_hide" class="foss_hide" value="'.str_replace('+', 'p', $row->foss_category).'">
+							<input type="hidden" name="lang_hide" class="lang_hide" value="'.$row->language.'">';
+			
+				$tmp_show_video = str_replace('{video}', $output, $tmp_show_video);
+				$output = '';
+				$tmp_show_video = str_replace('{visits}', $row->hit_count.' visits', $tmp_show_video);
+			
+				// generating assignment
+				if ($row->tutorial_assignment != '' && $row->tutorial_assignment != 'pending' && $row->tutorial_assignment != 'notrequired'){
+					$output = str_replace("st_videos/".$row->foss_category."/".$row->tutorial_level."/".$row->tutorial_name."/", '', $row->tutorial_assignment);
+					$tmp_show_video = str_replace('{assignment}', $output, $tmp_show_video);
+					$zip->addLargeFile($file_upload_path.$row->tutorial_assignment, 'spoken-tutorial.org/'.$row->tutorial_assignment);
+				}elseif ($row->tutorial_assignment == '' || $row->tutorial_assignment == 'pending') {
+					$tmp_show_video = str_replace('{assignment}', '../../../../theme/resource_not_available.html', $tmp_show_video);
+				}else{
+					$tmp_show_video = str_replace('{assignment}', '../../../../theme/resource_not_required.html', $tmp_show_video);
+				}
+			
+				// generating code files
+				if ($row->tutorial_code != '' && $row->tutorial_code != 'pending' && $row->tutorial_code != 'notrequired'){
+					$output = str_replace("st_videos/".$row->foss_category."/".$row->tutorial_level."/".$row->tutorial_name."/", '', $row->tutorial_code);
+					$tmp_show_video = str_replace('{codefiles}', $output, $tmp_show_video);
+					$zip->addLargeFile($file_upload_path.$row->tutorial_code, 'spoken-tutorial.org/'.$row->tutorial_code);
+				}elseif ($row->tutorial_code == '' || $row->tutorial_code == 'pending') {
+					$tmp_show_video = str_replace('{codefiles}', '../../../../theme/resource_not_available.html', $tmp_show_video);
+				}else{
+					$tmp_show_video = str_replace('{codefiles}', '../../../../theme/resource_not_required.html', $tmp_show_video);
+				}
+			
+				// generating slides
+				if ($row->tutorial_slide != '' && $row->tutorial_slide != 'pending' && $row->tutorial_slide != 'notrequired'){
+					$output = str_replace("st_videos/".$row->foss_category."/".$row->tutorial_level."/".$row->tutorial_name."/", '', $row->tutorial_slide);
+					$tmp_show_video = str_replace('{slides}', $output, $tmp_show_video);
+					$zip->addLargeFile($file_upload_path.$row->tutorial_slide, 'spoken-tutorial.org/'.$row->tutorial_slide);
+				}elseif ($row->tutorial_slide == '' || $row->tutorial_slide == 'pending') {
+					$tmp_show_video = str_replace('{slides}', '../../../../theme/resource_not_available.html', $tmp_show_video);
+				}else{
+					$tmp_show_video = str_replace('{slides}', '../../../../theme/resource_not_required.html', $tmp_show_video);
+				}
+				$jquery_data = '<script type="text/javascript">
+									jQuery(document).ready(function() {
+										var fvl = $(".foss_hide").val();
+										var lvl = $(".lang_hide").val();
+										
+										$.jStorage.set("language", lvl);
+						   				$.jStorage.set("foss", fvl);
+									});
+								</script>';
+				// adding show_video.html to zip
+				$zip->addFile($tmp_show_video.$jquery_data, 'spoken-tutorial.org/'.$show_video_file);
+			
+				// adding video file to zip
+				$zip->addLargeFile($file_upload_path.$row->tutorial_video, 'spoken-tutorial.org/'.$row->tutorial_video);
+			}
+		}
+		$index_file_data .= '				</tbody>
+										</table>
+									</div>';
+		$branching = '';
+		$zip->addLargeFile($file_upload_path.'Default_Instruction_Sheet.pdf', 'spoken-tutorial.org/st_videos/Default_Instruction_Sheet.pdf');
+		$zip->addLargeFile($file_upload_path.'Default_Installation_Sheet.pdf', 'spoken-tutorial.org/st_videos/Default_Installation_Sheet.pdf');
+		foreach($fval as $sel_foss) {
+			$options = '';
+			foreach($lval[$sel_foss] as $sel_lang) {
+				$options .= '<option value="'.$sel_lang.'">'.$sel_lang.'</option>';
+			}
+			$inst_sheet = '';
+			if(file_exists($file_upload_path.'st_videos/'.$sel_foss.'/'.$sel_foss.'_Instruction_Sheet_English.pdf')) {
+				$inst_sheet .= '<p style="text-align:right;margin: 5px 10px 5px 0; float:right;"><span style="font-weight:bold;font-size:20px; padding-right: 5px;">⤵</span><a href="st_videos/'.$sel_foss.'/'.$sel_foss.'_Instruction_Sheet_English.pdf">Instruction sheet</a></p>';
+				$zip->addLargeFile($file_upload_path.'st_videos/'.$sel_foss.'/'.$sel_foss.'_Instruction_Sheet_English.pdf', 'spoken-tutorial.org/st_videos/'.$sel_foss.'/'.$sel_foss.'_Instruction_Sheet_English.pdf');
+			}else {
+				$inst_sheet .= '<p style="text-align:right;margin: 5px 10px 5px 0; float:right;"><span style="font-weight:bold;font-size:20px; padding-right: 5px;">⤵</span><a href="st_videos/Default_Instruction_Sheet.pdf">Instruction sheet</a></p>';
+			}
+			if(file_exists($file_upload_path.'st_videos/'.$sel_foss.'/'.$sel_foss.'_Installation_Sheet_English.pdf')) {
+				$inst_sheet .= '<p style="text-align:right;margin: 5px 10px 5px 0; float:right;"><span style="font-weight:bold;font-size:20px; padding-right: 5px;">⤵</span><a href="st_videos/'.$sel_foss.'/'.$sel_foss.'_Installation_Sheet_English.pdf">Installation sheet</a></p>';
+				$zip->addLargeFile($file_upload_path.'st_videos/'.$sel_foss.'/'.$sel_foss.'_Installation_Sheet_English.pdf', 'spoken-tutorial.org/st_videos/'.$sel_foss.'/'.$sel_foss.'_Installation_Sheet_English.pdf');
+			}else {
+				$inst_sheet .= '<p style="text-align:right;margin: 5px 10px 5px 0; float:right;"><span style="font-weight:bold;font-size:20px; padding-right: 5px;">⤵</span><a href="st_videos/Default_Installation_Sheet.pdf">Installation sheet</a></p>';
+			}
+			$branching .= '		else if(display_foss == "'.str_replace('+', 'p', $sel_foss).'") {
+										$(".cd-sel-language").html(options + \''.$options.'\');
+										$(".inst_sheet").val(\''.$inst_sheet.'\');
+						   		}';
+		}
+		$jquery_data = '<script type="text/javascript">
+							jQuery(document).ready(function() {
+	
+								// disc-creation
+								var foss = $.jStorage.get("foss", "");
+								var lang = $.jStorage.get("language", "");
+								
+								if(lang != "" && foss != ""){
+						   			showClassVar = foss + "-" + lang;
+						   			$(".languages").addClass("hide-row");
+						   			$("."+showClassVar).removeClass("hide-row");
+						   			display_foss = foss;
+						   			var options = "<option value=\"\">Select Language</option>";
+						   			if(display_foss == "") {
+										$(".cd-sel-language").html(options);
+										$(".inst_sheet").val("");
+									}'.$branching.'
+									$(".cd-sel-language").val(lang);
+									$(".cd-sel-foss").val(foss);
+									$(".instruction-sheet").html($(".inst_sheet").val());
+						   		}else {
+						   			$.jStorage.set("language", "");
+						   			$.jStorage.set("foss", "");
+						   			$(".languages").removeClass("hide-row");
+						   		}
+
+								$(".locate_tutorial").click(function(){
+							   		var display_lang = $(".cd-sel-language").val();
+							   		var display_foss = $(".cd-sel-foss").val();
+
+							   		if(display_lang != "" && display_foss != ""){
+							   			showClassVar = display_foss+"-"+display_lang;
+							   			$(".languages").addClass("hide-row");
+							   			$("."+showClassVar).removeClass("hide-row");
+							   			$(".instruction-sheet").html($(".inst_sheet").val());
+							   		}else{
+							   			$(".languages").addClass("hide-row");
+							   			$.jStorage.set("language", "");
+						   				$.jStorage.set("foss", "");
+							   			alert("Please select Foss & Language and then press \"Locate Tutorial\" button");
+							   		}
+								});
+								$(".cd-sel-foss").change(function(){
+									var display_foss = $(".cd-sel-foss").val();
+									var options = "<option value=\"\">Select Language</option>";
+									if(display_foss == "") {
+										$(".cd-sel-language").html(options);
+									}'.$branching.'
+								});
+							});
+						</script>';
+		// adding index.html to zip
+		$zip->addFile($header.$index_file_data.$footer.$jquery_data, 'spoken-tutorial.org/index.html');
+		$header = '';
+		$index_file_data = '';
+		$footer = '';
+		
+		// adding "What is Spoken Tutorial" video to zip
+		$zip->addLargeFile($file_upload_path."st_videos/Spoken-Tutorial-Technology/C2/What-is-a-Spoken-Tutorial/What-is-a-Spoken-Tutorial-English.ogv", 'spoken-tutorial.org/st_videos/Spoken-Tutorial-Technology/C2/What-is-a-Spoken-Tutorial/What-is-a-Spoken-Tutorial-English.ogv');
+		
+		// adding theme directory to zip
+		$cwd = getcwd();
+		chdir($file_upload_path);
+		$zip->addDirectoryContent("spoken-tutorial.org/theme", "spoken-tutorial.org/theme");
+		//$zip->addGlob("spoken-tutorial.org/theme/css/*");
+		//$zip->addGlob("spoken-tutorial.org/theme/images/fancybox/*");
+		//$zip->addGlob("spoken-tutorial.org/theme/images/*.png");
+		//$zip->addGlob("spoken-tutorial.org/theme/js/*");
+		//$zip->addGlob("spoken-tutorial.org/theme/favicon.ico");
+		chdir($cwd);
+		
+		// closing zip file
+		$zip->finalize();
+		
+		// drupal_set_message('Dump created successfully!');
+		
+	}
+	
+	function cd_len_cutter($text, $size = NULL){
+		if($size){
+			return strlen($text) <= $size ? $text : substr($text, 0, $size)."..."; 
+		}else{
+			return strlen($text) <= 45 ? $text : substr($text, 0, 45)."..."; 
+		}
+	}
+	
+	function cd_human_text($value) {
+		return str_replace('-', ' ', $value);
+	}
+	
+	function cd_outline_humen_view($outline){
+		$temp = str_replace("\t", "&nbsp;&nbsp;&nbsp;&nbsp;", $outline);
+		$temp = str_replace("\n\n\n", "\n", $temp);
+		$outline_array = explode("\n", $temp);
+		$temp = "";
+		foreach($outline_array as $line) {
+			$line = trim($line);
+			if($line != ''){
+				$temp .= "<li>".$line."</li>";
+			}
+		}
+		return "<ul>".$temp."</ul>";
+	}
+	
+	function cd_get_req_pre($value, $flag, $sval) {
+		
+		if($flag == 1){
+			$query = "select td.foss_category, td.tutorial_level, td.tutorial_name, tr.id as tid, tr.language, tr.tutorial_video from tutorial_details td, tutorial_resources tr where td.id=tr.tutorial_detail_id and td.foss_category='".$value->foss_category."' and tr.language='".$value->language."' and tr.tutorial_status='accepted' and td.order_code < ".$value->order_code." order by order_code DESC LIMIT 5";
+		}else{
+			$query = "SELECT td.foss_category, td.tutorial_level, td.tutorial_name, tr.id as tid, tr.language from tutorial_details td, tutorial_resources tr WHERE td.id=tr.tutorial_detail_id and td.foss_category = '" . $value -> foss_category . "' AND tr.language = '" . $value -> language . "' and tr.tutorial_status='accepted' AND tr.id != ".$value->trid." ORDER BY RAND() ASC LIMIT 5";
+		}
+
+		$result = db_query($query);
+		$count = 0;
+		$content = '';
+		while ($item = db_fetch_object($result)) {
+			$show_video_file = '../../../../'.str_replace($item->tutorial_name.'-'.$item->language.'.ogv', '', $item->tutorial_video).'show_video_'.$item->language.'.html';
+			$content .= '<li><a href="'.$show_video_file.'" title="'.str_replace('-', ' ', $item -> tutorial_name).'"><img src="../../../../theme/images/thumb.png"></a>';
+				$content .= '<div class="con">
+									<p class="foss">'.str_replace('-', ' ', $item -> foss_category).' - '.$item ->tutorial_level.'</p>
+									<p class="tname">
+										<a href="'.$show_video_file.'" title="'.str_replace('-', ' ', $item -> tutorial_name).'">'.cd_len_cutter(cd_human_text($item -> tutorial_name)).'</a>
+									</p>
+								</div></li>';
+		}
+		if($content == ''){
+			$content = "<p>There is no pre-requistes for this tutorial</p>";
+		}else{
+			$content = '<ul>'.$content.'</ul>';
+		}
+		return $content;
+	}
+	
+	function _cd_format_bytes($bytes) {
+
+	if ($bytes >= 1073741824)
+        {
+            $bytes = number_format($bytes / 1073741824, 2) . ' GB';
+        }
+        elseif ($bytes >= 1048576)
+        {
+            $bytes = number_format($bytes / 1048576, 2) . ' MB';
+        }
+
+        return $bytes;
+	}
+
+	function _cd_format_kbytes($bytes) {
+
+        if ($bytes >= 1048576)
+        {
+            $bytes = number_format($bytes / 1048576, 2) . ' GB';
+        }
+        elseif ($bytes >= 1024)
+        {
+            $bytes = number_format($bytes / 1024, 2) . ' MB';
+        }else {
+	    $bytes = number_format($bytes, 2) . 'KB';
+	}
+
+        return $bytes;
+        }

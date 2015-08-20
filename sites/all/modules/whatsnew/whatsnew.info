@@ -1,0 +1,6 @@
+; $Id$
+name = "What's New"
+description = "Dynamic display of newly uploaded videos."
+package = Spoken-Tutorial
+core = 6.x
+php = 5.1

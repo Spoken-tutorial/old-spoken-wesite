@@ -1,0 +1,42 @@
+.type {
+	margin-top: 5px;
+}
+.feedback {
+    position: relative;
+    padding: 10px;
+    margin: 15px 10px;
+    min-height: 100px;
+    background: #ECECE3;
+    -webkit-border-radius: 5px;
+       -moz-border-radius: 5px;
+         -o-border-radius: 5px;
+            border-radius: 5px;
+	padding-bottom: 15px;
+}
+.timestamp {
+    position: absolute;
+    right: 55px;
+    top: 10px;
+    color: #aaaaaa;
+}
+.sent {
+    border: 2px solid #86c543;
+}
+.not-sent {
+    border: 2px solid #CCCCB2;
+}
+.btn-reply {
+	float: right;
+    padding: 5px;
+    background: lightslategrey;
+}
+.btn-reply a{
+    text-decoration: none;
+    color: #ffffff;
+}
+.delete {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+}
+

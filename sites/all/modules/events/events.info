@@ -1,0 +1,13 @@
+; $Id$
+; Auther Sanmugasundaram k
+; Email - k.sanmugam2@gmail.com
+
+
+name = "Calendar Events"
+description = "This is the module used to view workshops"
+core = 6.x
+php = 5.1
+version = "6.x-1.0.1"
+package = Spoken-Tutorial
+
+

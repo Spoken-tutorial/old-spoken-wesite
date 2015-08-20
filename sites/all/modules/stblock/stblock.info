@@ -1,0 +1,7 @@
+; $Id$
+name = "Spoken-Tutorial Upload Interface Block"
+description = "This module will creates a block which contains list of links"
+package = Spoken-Tutorial
+core = 6.x
+php = 5.1
+version = "6.x-1.0"

@@ -1,0 +1,220 @@
+<?php
+function missing_component_perm() {
+	return array("list of missing component", "reply missing component");
+	}
+	function missing_component_menu() {
+		$items = array();
+		// Lists available videos
+		$items['tutorial/missing'] = array(
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('missing_component_form'),
+			'access callback' => TRUE,
+		);
+		$items['tutorial/missing_list'] = array(
+			'title' => 'List Of Missing Components',
+			'description' => 'List Of Missing Components',
+			'page callback' => 'missing_tutorial_all',
+			'access arguments' => array('list of missing component'),
+			'file' => 'reply.inc'
+		);
+		$items['tutorial/missing_component_reply'] = array(
+			'title' => 'Reply',
+			'description' => 'Reply',
+			'page callback' => 'missing_component_reply_form',
+			'access arguments' => array('reply missing component'),
+			'file' => 'reply.inc'
+		);
+		$items['tutorial/missing/message'] = array(
+			'page callback' => 'missing_comment_message',
+			'access callback' => TRUE,
+		);
+
+		return $items;
+	}
+
+	function missing_comment_message($id = NULL) {
+		if(isset($id) && $id != ''){
+			if($id == 1) {
+				return '<p>Thanks for submitting your query. Your request will be addressed shortly.</p>';
+			}else {
+				return '<p>Something went wrong, please try again later.</p>';
+			}
+		}else {
+			return '<p>Access Denied!</p>';
+		}
+	}
+
+	function missing_component_form($form_state){
+		global $user;
+		$path = drupal_get_path('module', 'missing_component');
+		drupal_add_js($path . '/missing_component.js', 'module');
+		$form['#prefix'] = '<div class="workshop-form">';
+		$form['#suffix'] = '</div>';
+		$form['#attributes'] = array(
+			'name' => 'problem_report',
+			'enctype' => "multipart/form-data",
+			'class' => 'problem_report',
+			'onSubmit' => 'return validate_report();'
+		);
+		$form['form_title'] = array(
+			'#type' => 'markup',
+			'#value' => '<center><h5>Report Missing Component</h5><br /></center>'
+		);
+		if(isset($_GET['trid'])) {
+			$form['component'] = array(
+				'#type' => 'select',
+				'#title' => t('Component'),
+				'#options' => array(
+					'outline' => 'Outline',
+					'script' => 'Script',
+					'video' => 'Video',
+					'slide' => 'Slide',
+					'codefile' => 'Codefile',
+					'assignment' => 'Assignment'
+				),
+				'#attributes' => array('class' => 'mossing-component'),
+			);
+			$form['trid'] = array(
+				'#type' => 'hidden',
+				'#value' => $_GET['trid']
+			);
+			$form['missing_type'] = array(
+				'#type' => 'radios',
+				'#default_value' => 0,
+				'#options' => array(0 => 'Component itself is missing', 1 => 'Some content is missing'),
+				'#required' => TRUE,
+				'#attributes' => array('class' => 'rpmissing-type'),
+				'#prefix' => '<div class="pmissing-type-div">',
+				'#suffix' => '</div>'
+			);
+			$form['missing_comment'] = array(
+				'#type' => 'textarea',
+				'#title' => t('Remarks'),
+				'#prefix' => '<div class="rpmissing_comment-div">',
+				'#suffix' => '</div>'
+			);
+			if($user->mail) {
+				$form['email'] = array(
+					'#type' => 'textfield',
+					'#title' => t('Email ID'),
+					'#value' => $user->mail,
+					'#required' => TRUE,
+					'#prefix' => '<div class="report_mail" style="display:none;">',
+					'#suffix' => '</div>'
+				);
+			} else {
+				$form['email'] = array(
+					'#type' => 'textfield',
+					'#title' => t('Email ID'),
+					'#required' => TRUE,
+					'#prefix' => '<div class="report_mail" style="display:none;">',
+					'#suffix' => '</div>'
+				);
+			}
+			$form['report'] = array(
+				'#type' => 'radios',
+				'#title' => t('Do you want to be reported about the missing component has been fixed ?'),
+				'#options' => array(1=>t('Yes'),0=>t('No')),
+				'#required' => TRUE,
+				'#attributes' => array('class' => 'report_missing_comp')
+			); 
+			$form['save'] = array(
+				'#type' => 'submit',
+				'#value' => 'Submit',
+				'#attributes' => array('class' => 'rpmissing-type'),
+			);
+		} else {
+			$form['error_message'] = array(
+				'#type' => 'markup',
+				'#value' => '<p>Access Denied!</p>'
+			);
+		}
+
+		return $form;
+	}
+	function missing_component_form_validate($form, &$form_state){
+		if($form_state['values']['missing_type'] == 0) {
+			$components = array(
+				'outline' => 'tr.tutorial_outline',
+				'script' => 'tr.tutorial_script',
+				'video' => 'tr.tutorial_video',
+				'slide' => 'tcc.tutorial_slide',
+				'codefile' => 'tcc.code',
+				'assignment' => 'tcc.tutorial_assignment'
+			);
+			$query = "select tr.id as trid from tutorial_resources tr, tutorial_common_contents tcc where tr.id=".$form_state['values']['trid']." and tr.tutorial_content_id=tcc.id and (".$components[$form_state['values']['component']]." = 'pending' or ".$components[$form_state['values']['component']]." = '')";
+			$result = db_query($query);
+			if(!$row = db_fetch_object($result)){
+				form_set_error(
+					'component',
+					t("This <b>".$form_state['values']['component']."</b> is available. However if you wish to report an error, please click on <b>Some content is missing</b> radio button.")
+				);
+			}
+		}
+		return;
+	}
+    function missing_component_form_submit($form, &$form_state){
+		global $user;
+
+		$redirect = 'tutorial/missing/message/';
+		$query = "";
+
+		if($form_state['values']['missing_type'] == 1) {
+			$query = "insert into tutorial_missing_component (uid, trid, component, type, remarks, reported, created, email) values(".$user->uid.", ".$form_state['values']['trid'].", '".$form_state['values']['component']."', 1, '".$form_state['values']['missing_comment']."','".$form_state['values']['report']."','".date('Y-m-d')."','".$form_state['values']['email']."')";
+		}else {
+			$query = "insert into tutorial_missing_component (uid, trid, component, type,reported, created, email) values(".$user->uid.", ".$form_state['values']['trid'].", '".$form_state['values']['component']."', 0,'".$form_state['values']['report']."','".date('Y-m-d')."','".$form_state['values']['email']."')";
+		}
+
+		$mailto = '';
+
+		if(db_query($query)){
+			$query = "select tr.tutorial_outline_uid, tr.tutorial_script_uid, tr.tutorial_video_uid, tcc.tutorial_slide_uid, tcc.tutorial_code_uid, tcc.tutorial_assignment_uid from tutorial_resources tr, tutorial_common_contents tcc where tr.id=".$form_state['values']['trid']." and tcc.id=tr.tutorial_content_id";
+			$result = db_query($query);
+
+			if($row = db_fetch_object($result)) {
+				$query = "select mail from users where uid=".$row->tutorial_outline_uid." or uid=".$row->tutorial_script_uid." or uid=".$row->tutorial_video_uid." or uid=".$row->tutorial_slide_uid." or uid=".$row->tutorial_code_uid." or uid=".$row->tutorial_assignment_uid;
+				$result = db_query($query);
+				while($row = db_fetch_object($result)) {
+					$mailto .= $row->mail.",";
+				}
+			}
+
+			// mail to contributor
+			$subject = 'Component missing notification';
+			$message = '<p>Dear Contributor,</p><p>You have received "Component missing('.$form_state['values']['component'].')" remarks from public for the tutorial content which you have contributed. Kindly have your look upon the same and furnish a suitable reply.</p><p>Tutorial link : http://spoken-tutorial.org/show_video?tr='.$form_state['values']['trid'].'&sval=1</p>';
+
+			if($form_state['values']['missing_comment']){
+				$message .='<p>Remarks :</p><p>'.$form_state['values']['missing_comment'].'</p>';
+			}
+			$message .="<p>Thank you</p>";
+			if($mailto) {
+				send_email($message, $subject, '', 'nancyvarkey@gmail.com, rahulkatarey@gmail.com, web-team@spoken-tutorial.org', $mailto, 'no-reply@spoken-tutorial.org');
+			}
+			if($form_state['values']['report']) {
+				// mail to user
+				$subject = 'Component missing notification';
+				$message = '<p>Thank you for reporting the missing component. ST-Team will get back to you with a suitable reply, within 48 hours.</p>';
+				$message .="<p>Thanks,</p><p>Administrator</p>";
+				if($form_state['values']['email']) {
+					send_email($message, $subject, 'nancyvarkey@gmail.com, rahulkatarey@gmail.com', '', $form_state['values']['email'], 'no-reply@spoken-tutorial.org');
+				}
+			}
+			$redirect .= "1";
+		} else {
+			$redirect .= "2";
+		}
+		drupal_goto($path = $redirect, array('tr' => $form_state['values']['trid'], 'sval' => 1), $fragment = NULL, $http_response_code = 302);
+	}
+
+	function send_email($body, $subject, $header_bcc, $header_cc, $to, $from) {
+		$params = array(
+			'body' => $body,
+			'subject' => $subject,
+			'headers' => array(
+					'Bcc' => $header_bcc,
+					'Cc' => $header_cc
+				)
+		);
+		$email = drupal_mail('workshops', 'reply', $to, LANGUAGE_NONE, $params, $from, true);
+	}
+?>

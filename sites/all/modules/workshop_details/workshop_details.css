@@ -1,0 +1,30 @@
+#stu_det
+{
+    clear:both;
+    overflow:hidden;
+}
+#student_name
+{
+    overflow:hidden;
+    float:left;
+    width:450px;
+}
+#first_name, #last_name
+{
+	float:left;
+    padding-right:8px;
+}
+#gender
+{
+	overflow:hidden;
+    width:150px;	
+    padding-top:6px;
+}
+#gender .form-item
+{
+    float:left;
+}
+#stu_submit
+{
+	clear:both;
+}

@@ -1,0 +1,121 @@
+<?php
+
+function india_map_menu() {
+
+	$items = array();
+	
+	$items['india_map'] = array(
+		'title' => 'India Map',
+		'page callback' => 'india_map',
+		'access callback' => TRUE,
+	);
+	
+	$items['state_info'] = array(
+		'page callback' => 'state_info',
+		'access callback' => TRUE,
+	);
+	
+	$items['completed_workshops_list'] = array(
+		'title' => 'Completed workshops list',
+		'page callback' => 'completed_workshops_list',
+		'access callback' => TRUE,
+		'file' => 'completed_list.inc',
+	);
+
+	$items['feedback_list'] = array(
+		'title' => 'Participants Detail',
+		'page callback' => 'feedback_list',
+		'access callback' => TRUE,
+		'file' => 'completed_list.inc',
+	);
+	
+	$items['feedback_view'] = array(
+		'title' => 'Feedback',
+		'page callback' => 'feedback_view',
+		'access callback' => TRUE,
+		'file' => 'view_feedback.inc',
+	);
+
+	$items['view_completed_workshop'] = array(
+                'title' => 'Completed Workshop Details',
+                'page callback' => 'view_completed_workshop',
+                'access callback' => TRUE,
+                'file' => 'completed_list.inc',
+        );
+	
+	$items['resource_center_map_details'] = array(
+		'title' => 'Resource Centers List',
+		'page callback' => 'resource_center_map_details',
+		'access callback' => TRUE,
+		'file' => 'resource_center_map.inc',
+	);
+	
+	$items['resource_center_view_college_map_details'] = array(
+		'title' => 'Resource Center Details',
+		'page callback' => 'resource_center_view_college_map_details',
+		'access callback' => TRUE,
+		'file' => 'resource_center_map.inc',
+	);
+	
+	return $items;
+}
+
+function india_map() {
+
+	$path = drupal_get_path('module', 'india_map');
+	drupal_add_css($path.'/colorbox.css');
+	drupal_add_js($path.'/jquery.colorbox.js');
+	drupal_add_js('$(document).ready(function(){ $(".ajax").colorbox(); });', 'inline');
+
+	$output = '<center>
+					<img src="'.$path.'/images/india_map.gif" alt="India Political" usemap="#India_Map" height="659" width="587" border="0" style="margin-bottom: 20px;">
+					<map name="India_Map" id="India_Map">';
+	db_set_active('workshop_info');
+	$query = "SELECT st.code, st.image_map_area FROM states st WHERE st.code IN (SELECT DISTINCT ac.state_code FROM academic_center ac, workshop_requests wr WHERE ac.academic_code=wr.academic_code AND wr.status=2)";
+	$result = db_query($query);
+	db_set_active('default');
+	while($row = db_fetch_object($result)) {
+		// $output .= $row->image_map_area.' href="'.base_path().'state_info/'.$row->code.'">';
+		$output .= $row->image_map_area.' href="'.base_path().'state_info/'.$row->code.'" class="map-fancybox">';
+	}
+
+	$output .= '	</map>					
+				</center>';
+	return $output;
+}
+
+function state_info($code = NULL) {
+	if(isset($code)) {
+
+		$data = '';
+		$path = drupal_get_path('module', 'india_map');
+		
+		db_set_active('workshop_info');
+		$query = "SELECT COUNT(wr.id) AS wr_count, MIN(wr.cfm_wkshop_date) AS from_date, SUM(wd.no_of_participants) AS p_count FROM workshop_requests wr, workshop_details wd WHERE wr.academic_code LIKE '".$code."%' AND wr.status =2 AND wd.workshop_code=wr.workshop_code LIMIT 0 , 40";
+		// var_dump($query); die;
+		$result = db_query($query);
+		db_set_active('default');
+		$row = db_fetch_array($result);
+
+		db_set_active('workshop_info');
+		$query = "SELECT count(ac.id) AS rc_count FROM academic_center ac WHERE ac.state_code='".$code."' AND ac.resource_center=1";
+		$result = db_query($query);
+		db_set_active('default');
+		$row1 = db_fetch_array($result);
+
+		echo '<style type="text/css"> #homer {color: #1f2c0b;} .cbp {line-height: 8px;} a {color: #db5d00; text-decoration: none;} #cboxTitle {color: black; font-weight: bold;}</style>';
+		echo '<div id="homer" style="background:url('.$path.'/images/logo.png) right center no-repeat #ececec; height:13	0px; width:260px; padding:10px 10px;">';
+		if($row && $row1) {
+			echo '<p class="cbp"><a href="'.base_path().'completed_workshops_list/'.$code.'" target="_blank">Workshops :</a> '.$row['wr_count'].'</p>';
+			echo '<p class="cbp">Participants : '.$row['p_count'].'</p>';
+			echo '<p class="cbp"><a href="'.base_path().'resource_center_map_details/'.$code.'" target="_blank">Resource Centers :</a> '.$row1['rc_count'].'</p>';
+			echo '<p class="cbp">From '.date('d M Y', strtotime($row['from_date'])).'</p>';
+			// echo '<a href="">Click here</a> to view state map';
+		}else {
+			echo '<p>No Activities!</p>';
+		}
+		echo '</div>';
+	}else {
+		echo 'Access Denied!';
+	}
+}

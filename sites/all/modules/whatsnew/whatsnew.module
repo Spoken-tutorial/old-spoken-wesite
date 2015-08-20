@@ -1,0 +1,49 @@
+<?php
+
+	/**
+	* Implementation of hook_help()
+	*/
+
+	function whatsnew_help($path, $arg) {
+		if ($path == 'admin/help#whatsnew') {
+			$txt = 'This module displays newly uploaded video links';
+			return '<p>'. t($txt) .'</p>';
+		}
+	}
+
+	/**
+	* Implementation of hook_block().
+	*/
+
+	function whatsnew_block($op = 'list', $delta = 0, $edit = array()) {
+		switch ($op) {case 'list':
+			$blocks[0]['info'] = t('What\'s New');
+			return $blocks;
+		case 'view':
+			$item = _whatsnew_get_video();
+			if(!empty($item)) {
+				$content = $item;
+				$blocks['subject'] = t('What\'s New');
+				$blocks['content'] = $content;
+				return $blocks;
+			}
+		}
+	}
+			
+	function _whatsnew_get_video() {
+
+		//$sql = "SELECT sl.sid, sl.FOSS_Category, sl.Tutorial_Name, sl.Upload_Time from {stcontentlist} sl WHERE NOT EXISTS (select 1 from {stcontentlist} where FOSS_Category = sl.FOSS_Category and sid > sl.sid) GROUP BY FOSS_Category ORDER BY RAND() LIMIT 3";
+		$sql = "select tro.trid, tro.tutorial_detail_id, tro.language, tro.upload_time, tro.foss_category, tro.tutorial_name from( select tr.id as trid, tr.language, tr.upload_time, td.id as tutorial_detail_id, td.foss_category, td.tutorial_name from tutorial_resources tr, tutorial_details td where tr.tutorial_detail_id=td.id and tr.tutorial_status='accepted') tro join (select ic.foss_category, MAX(ic.upload_time) as upload_time FROM ( select tr.id as trid, tr.upload_time, td.id as tutorial_detail_id, td.foss_category, td.tutorial_name from tutorial_resources tr, tutorial_details td where tr.tutorial_detail_id=td.id and tr.tutorial_status='accepted') ic GROUP BY ic.foss_category) tro1 on tro.foss_category=tro1.foss_category and tro.upload_time=tro1.upload_time group by upload_time ORDER BY RAND() LIMIT 3";
+
+		$res = db_query($sql);
+		$links = '';
+		$prev_foss = "";
+		while($item = db_fetch_object($res)){
+			
+			$links .= '<b>'.$item->foss_category.'</b><br />';
+			$links .= '<ul><li><a href="'.$GLOBALS['base_path'].'show_video/%3Ftr%3D'.$item->trid.'%2526sval%3D1">'.$item->tutorial_name.'</a></li></ul>';
+		}
+		// $item = db_fetch_object($res);
+		$links .= '<a href="'.$GLOBALS['base_path'].'show_recent">... more</a><br />';
+		return $links;
+	}

@@ -1,0 +1,19 @@
+<?php
+function workshop_feedback_perm() {
+	return array('Workshop Feedback');
+}
+function workshop_feedback_menu(){
+	$items = array();
+	
+	$items['workshop_feedback'] = array(
+		'title' => 'Workshop with Feedback',
+		'description' => 'Workshop with Feedback',
+		'page callback' => 'workshop_feedback',
+		'access arguments' => array('Workshop Feedback'),
+		'type' => MENU_NORMAL_ITEM,
+		'file' => 'feedback.inc',
+	);
+	
+	return $items;
+}
+?>
